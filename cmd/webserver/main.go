@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"todo-app/internal/storage"
 	"todo-app/internal/handlers"
+	"todo-app/internal/storage"
 )
 
 func main() {
@@ -26,9 +26,10 @@ func main() {
 	}
 
 	fileServer := http.FileServer(http.Dir(webDir))
-	
+
 	http.Handle("/", fileServer)
 	http.HandleFunc("/api/nextdate", handlers.NextDateHandler)
+	http.HandleFunc("/api/task", handlers.AddTaskHandler(dbStorage))
 
 	log.Printf("Starting server on port %s...", port)
 	err = http.ListenAndServe(":"+port, nil)
