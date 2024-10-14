@@ -18,6 +18,7 @@ func main() {
 	}
 	defer dbStorage.Close()
 
+	handler := &handlers.Handler{Storage: dbStorage}
 	webDir := "./web"
 
 	port := os.Getenv("TODO_PORT")
@@ -30,6 +31,7 @@ func main() {
 	http.Handle("/", fileServer)
 	http.HandleFunc("/api/nextdate", handlers.NextDateHandler)
 	http.HandleFunc("/api/task", handlers.AddTaskHandler(dbStorage))
+	http.HandleFunc("/api/tasks", handler.TasksHandler)
 
 	log.Printf("Starting server on port %s...", port)
 	err = http.ListenAndServe(":"+port, nil)
