@@ -30,8 +30,19 @@ func main() {
 
 	http.Handle("/", fileServer)
 	http.HandleFunc("/api/nextdate", handlers.NextDateHandler)
-	http.HandleFunc("/api/task", handlers.AddTaskHandler(dbStorage))
 	http.HandleFunc("/api/tasks", handler.TasksHandler)
+	http.HandleFunc("/api/task", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			handlers.AddTaskHandler(dbStorage).ServeHTTP(w, r)
+		case http.MethodGet:
+			handlers.GetTaskHandler(dbStorage).ServeHTTP(w, r)
+		case http.MethodPut:
+			handlers.UpdateTaskHandler(dbStorage).ServeHTTP(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
 
 	log.Printf("Starting server on port %s...", port)
 	err = http.ListenAndServe(":"+port, nil)

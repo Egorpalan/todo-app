@@ -72,13 +72,11 @@ func (s *Storage) GetUpcomingTasks(limit int) ([]map[string]string, error) {
 
 	for rows.Next() {
 		var task Task
-		// Сканируем данные из базы в структуру Task
 		if err := rows.Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat); err != nil {
 			log.Printf("Error scanning task: %v", err)
 			continue
 		}
 
-		// Преобразуем числовое поле ID в строку
 		taskMap := map[string]string{
 			"id":      strconv.FormatInt(task.ID, 10), // Преобразуем ID в строку
 			"date":    task.Date,
@@ -94,12 +92,40 @@ func (s *Storage) GetUpcomingTasks(limit int) ([]map[string]string, error) {
 		return nil, err
 	}
 
-	// Если задач нет, возвращаем пустой список
 	if tasks == nil {
 		tasks = []map[string]string{}
 	}
 
 	return tasks, nil
+}
+
+func (s *Storage) GetTaskByID(taskID int64) (*Task, error) {
+	query := `SELECT id, date, title, comment, repeat FROM scheduler WHERE id = ?`
+	var task Task
+
+	// Выполняем запрос
+	err := s.DB.QueryRow(query, taskID).Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("задача не найдена")
+		}
+		return nil, fmt.Errorf("ошибка при выполнении запроса: %v", err)
+	}
+
+	return &task, nil
+}
+
+func (s *Storage) UpdateTask(id int64, date, title, comment, repeat string) error {
+    query := `UPDATE scheduler SET date=?, title=?, comment=?, repeat=? WHERE id=?`
+    _, err := s.DB.Exec(query, date, title, comment, repeat, id)
+    return err
+}
+
+func (s *Storage) TaskExists(id int64) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS(SELECT 1 FROM scheduler WHERE id=?)`
+	err := s.DB.QueryRow(query, id).Scan(&exists)
+	return exists, err
 }
 
 func (s *Storage) Close() error {

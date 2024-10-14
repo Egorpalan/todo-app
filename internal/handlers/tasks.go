@@ -8,22 +8,19 @@ import (
 	"todo-app/internal/storage"
 )
 
-// Handler struct to hold the storage instance
 type Handler struct {
 	Storage *storage.Storage
 }
 
-// TasksHandler handles the /api/tasks endpoint
+
 func (h *Handler) TasksHandler(w http.ResponseWriter, r *http.Request) {
-	// Ожидаем GET-запрос
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Получаем параметры limit (ограничение на количество задач, если передан)
 	limitStr := r.URL.Query().Get("limit")
-	limit := 10 // Значение по умолчанию
+	limit := 10
 	if limitStr != "" {
 		var err error
 		limit, err = strconv.Atoi(limitStr)
@@ -33,7 +30,6 @@ func (h *Handler) TasksHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Получаем список задач из базы данных через хранилище
 	tasks, err := h.Storage.GetUpcomingTasks(limit)
 	if err != nil {
 		log.Printf("Error fetching tasks: %v", err)
@@ -41,7 +37,6 @@ func (h *Handler) TasksHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Формируем ответ в формате JSON
 	response := map[string]interface{}{
 		"tasks": tasks,
 	}
