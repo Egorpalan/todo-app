@@ -186,7 +186,7 @@ func UpdateTaskHandler(db *storage.Storage) http.HandlerFunc {
 			return
 		}
 
-		exists, err := db.TaskExists(taskID) 
+		exists, err := db.TaskExists(taskID)
 		if err != nil || !exists {
 			http.Error(w, `{"error": "Задача не найдена"}`, http.StatusNotFound)
 			return
@@ -218,4 +218,103 @@ func isValidRepeat(repeat string) bool {
 	}
 
 	return false
+}
+
+func DoneTaskHandler(db *storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, `{"error":"Method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+
+		taskIDStr := r.URL.Query().Get("id")
+		if taskIDStr == "" {
+			http.Error(w, `{"error":"Task ID is required"}`, http.StatusBadRequest)
+			return
+		}
+
+		taskID, err := strconv.ParseInt(taskIDStr, 10, 64)
+		if err != nil {
+			http.Error(w, `{"error":"Invalid task ID"}`, http.StatusBadRequest)
+			return
+		}
+
+		task, err := db.GetTaskByID(taskID)
+		if err != nil {
+			http.Error(w, `{"error":"Task not found"}`, http.StatusNotFound)
+			return
+		}
+
+		if task.Repeat == "" {
+			query := `DELETE FROM scheduler WHERE id = ?`
+			_, err := db.DB.Exec(query, taskID)
+			if err != nil {
+				http.Error(w, `{"error":"Failed to delete task"}`, http.StatusInternalServerError)
+				return
+			}
+		} else {
+			now := time.Now()
+			nextDate, err := scheduler.NextDate(now, task.Date, task.Repeat)
+			if err != nil {
+				http.Error(w, fmt.Sprintf(`{"error":"Failed to calculate next date: %s"}`, err), http.StatusInternalServerError)
+				return
+			}
+
+			query := `UPDATE scheduler SET date = ? WHERE id = ?`
+			_, err = db.DB.Exec(query, nextDate, taskID)
+			if err != nil {
+				http.Error(w, `{"error":"Failed to update task date"}`, http.StatusInternalServerError)
+				return
+			}
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]interface{}{})
+	}
+}
+
+func DeleteTaskHandler(db *storage.Storage) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			http.Error(w, `{"error": "Method not allowed"}`, http.StatusMethodNotAllowed)
+			return
+		}
+
+		taskIDStr := r.URL.Query().Get("id")
+		if taskIDStr == "" {
+			http.Error(w, `{"error": "Не указан идентификатор"}`, http.StatusBadRequest)
+			return
+		}
+
+		taskID, err := strconv.ParseInt(taskIDStr, 10, 64)
+		if err != nil {
+			http.Error(w, `{"error": "Неверный формат идентификатора"}`, http.StatusBadRequest)
+			return
+		}
+
+		// Удаление задачи из базы данных
+		query := `DELETE FROM scheduler WHERE id = ?`
+		res, err := db.DB.Exec(query, taskID)
+		if err != nil {
+			http.Error(w, `{"error":"Ошибка при удалении задачи"}`, http.StatusInternalServerError)
+			return
+		}
+
+		rowsAffected, err := res.RowsAffected()
+		if err != nil {
+			http.Error(w, `{"error":"Ошибка при определении количества затронутых строк"}`, http.StatusInternalServerError)
+			return
+		}
+
+		if rowsAffected == 0 {
+			http.Error(w, `{"error":"Задача не найдена"}`, http.StatusNotFound)
+			return
+		}
+
+		// Успешное удаление, возвращаем пустой JSON
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("{}"))
+	}
 }

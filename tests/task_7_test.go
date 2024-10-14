@@ -60,7 +60,7 @@ func TestDelTask(t *testing.T) {
 		title:  "Временная задача",
 		repeat: "d 3",
 	})
-	ret, err := postJSON("api/task?id="+id, nil, http.MethodDelete)
+	ret, err := postJSON("api/task?id="+id, nil, http.MethodDelete) // 
 	assert.NoError(t, err)
 	assert.Empty(t, ret)
 

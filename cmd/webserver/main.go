@@ -31,6 +31,7 @@ func main() {
 	http.Handle("/", fileServer)
 	http.HandleFunc("/api/nextdate", handlers.NextDateHandler)
 	http.HandleFunc("/api/tasks", handler.TasksHandler)
+
 	http.HandleFunc("/api/task", func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodPost:
@@ -39,6 +40,17 @@ func main() {
 			handlers.GetTaskHandler(dbStorage).ServeHTTP(w, r)
 		case http.MethodPut:
 			handlers.UpdateTaskHandler(dbStorage).ServeHTTP(w, r)
+		case http.MethodDelete:
+			handlers.DeleteTaskHandler(dbStorage).ServeHTTP(w, r)
+		default:
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	http.HandleFunc("/api/task/done", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost:
+			handlers.DoneTaskHandler(dbStorage).ServeHTTP(w, r)
 		default:
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
